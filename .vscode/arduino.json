@@ -1,7 +1,6 @@
 {
-    "board": "arduino:avr:nano",
-    "configuration": "cpu=atmega328old",
+    "board": "arduino:avr:uno",
     "programmer": "AVR ISP",
-    "sketch": "main\\main.ino",
+    "sketch": "DHT\\main\\main.ino",
     "port": "COM5"
 }

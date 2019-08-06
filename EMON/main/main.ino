@@ -10,10 +10,11 @@
     #define HISPEEDMODE 1 // If you flagged this value, current measure will more precisely. 
                           // Need define IN_POWER_SYSTEM_FREQ if you flagged!
     #define IN_MODULE_LINE_CAIL 1 // Use last analogIn pin to measure pull up voltage error and cailbrate it.
-    #define IN_MODULE_LINE_CAIL_PIN 5 // Which pin is you use to error cailbrate.
+    #define IN_MODULE_LINE_CAIL_PIN 6 // Which pin is you use to error cailbrate.
     #define IN_SAMPLING_UNIVERSAL 581
     #define IN_SAMPLING_60HZ 82
     #define IN_SAMPLING_50HZ 100
+    #define IN_CITYPOWER_VOLTAGE 110
     #define IN_POWER_SYSTEM_FREQ 60 // Input 50 or 60 that is your AC power system's frequency.
     #define IN_MODULE_COUNT 6 // What Module is you have (include voltage error cailbration pin)
     #define IN_CAIL 44.11764 // CT truns / Rb    = Cailbration 
@@ -130,6 +131,7 @@ void loop() {
             Irms[i] = emon[i].calcIrms(SAMPLING); //NULL measure
         }
     }
+    Serial.print("{\"V\":\"" + String(IN_CITYPOWER_VOLTAGE) + "\"}");
     //Real main function block.
     while(1){
         for(i = 0 ; i < MODULE_COUNT ; i++){
@@ -159,15 +161,14 @@ void loop() {
                 Serial.print("{"); // Starter of JSON File.
                 //Put every single module's current RMS into JSON
                 for(j = 0 ; j < IN_MODULE_COUNT ; j++){
-                    str = "\"CT_" + String(j) + "\":" + 
-                        "{\"apparentPower\":\"" + String(Irms[j] * 110) + "\"," + "\"currentRMS\":\"" + String(Irms[j]) + "\"}";
+                    str = "\"CT_" + String(j) + "\":" + "{"
+                        "\"I\":\"" + String(Irms[j]) + "\"}";
                     Serial.print(str);
                     if(j != IN_MODULE_COUNT - 1) Serial.print(","); // Last entry can't have "," at the end.
 
                     /* Seems like
                                     CT_0: {
-                                        "apparentPower": "110",
-                                        "currentRMS": 1.00
+                                        "I": 1.00
                                     },
                                     CT_*: { ...
                     */
@@ -179,9 +180,18 @@ void loop() {
             //**********************END SEND JSON*******************//
 
             }
-            //Calculate Irms average basis for second, and try it best.
-            Irms[i] = (Irms[i] * averageCount[i] + emon[i].calcIrms(SAMPLING)) / (averageCount[i] + 1); 
-            averageCount[i] ++;
+            #if IN_MODULE_LINE_CAIL
+                if(i == MODULE_COUNT - 1){
+                    Irms[i] = (Irms[i] * averageCount[i] + emon[i].calcIrms(10)) / (averageCount[i] + 1); 
+                }
+                //Calculate Irms average basis for second, and try it best.
+                Irms[i] = (Irms[i] * averageCount[i] + emon[i].calcIrms(SAMPLING)) / (averageCount[i] + 1); 
+                averageCount[i] ++;
+            #else
+                //Calculate Irms average basis for second, and try it best.
+                Irms[i] = (Irms[i] * averageCount[i] + emon[i].calcIrms(SAMPLING)) / (averageCount[i] + 1); 
+                averageCount[i] ++;
+            #endif
         }
     }
 }
